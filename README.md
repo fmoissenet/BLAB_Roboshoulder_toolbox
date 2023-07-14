@@ -11,7 +11,7 @@
     </tr>
 </table>
 <h2 align="left">PROJECT DESCRIPTION</h2>
-This toolbox is related to a dataset freely available on Zenodo (10.5281/zenodo.8146967). The toolbox and dataset were established during the RoboShoulder project, a joined project with the <a href="https://www.hesge.ch/hepia/" target="_blank">HEPIA</a> school at Geneva, funded by the Orthopedic Surgery and Musculoskeletal Trauma Care Division of the Surgery Department of the Geneva University Hospitals.
+This is the version 1 of the BLAB_Roboshoulder_toolbox (an archive is available on Zenodo (https://zenodo.org/badge/latestdoi/666377581). This toolbox is related to a dataset freely available on Zenodo (https://www.doi.org/10.5281/zenodo.8146967). The toolbox and dataset were established during the RoboShoulder project, a joined project with the <a href="https://www.hesge.ch/hepia/" target="_blank">HEPIA</a> school at Geneva, funded by the Orthopedic Surgery and Musculoskeletal Trauma Care Division of the Surgery Department of the Geneva University Hospitals.
 
 </h2>
 
