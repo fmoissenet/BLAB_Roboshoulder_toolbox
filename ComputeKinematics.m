@@ -18,7 +18,7 @@
 % Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 % -------------------------------------------------------------------------
 
-function Joint = ComputeKinematics(Subject,Bone,Trial,itrial,fig,file)
+function Joint = ComputeKinematics(Subject,Bone,Trial,conditionList,itrial,fig,file)
 
 n = length(1:size(Bone(1).Trial(itrial).SCS.T,3));
 
@@ -36,18 +36,33 @@ Joint(1).sequence     = 'YXY';
 Joint(1).legend       = {'Elevation plane','Elevation angle','Internal (+) / External (-) rotation',...
                          'Anterior (+) / Posterior (-) translation','Inferior (-) / Superior (+) translation','Medial (-) / Lateral (+) translation'};
 Euler                 = R2mobileYXY_array3(Joint(1).T(1:3,1:3,:));
-Joint(1).Euler(1,1,:) = rad2deg(Euler(:,1,:)); % Elevation plane
+Joint(1).Euler(1,1,:) = unwrap(rad2deg(Euler(:,1,:))); % Elevation plane
 Joint(1).Euler(1,2,:) = rad2deg(Euler(:,2,:)); % Elevation angle
-Joint(1).Euler(1,3,:) = rad2deg(Euler(:,3,:)); % Internal-external rotation 
+Joint(1).Euler(1,3,:) = unwrap(rad2deg(Euler(:,3,:))); % Internal-external rotation 
 Joint(1).dj           = [];    
 % Special case: displacements expressed in thorax coordinate system
 dj                    = Joint(1).T(1:3,4,:); % Di+1 to Pi in SCS of segment i+1
 Joint(1).dj           = dj*1e3; % Stored in mm
+% Right side corrections
+if contains(Subject.side,'R')
+    Joint(1).Euler(1,1,:) = Joint(1).Euler(1,1,:)+180;
+    Joint(1).Euler(1,3,:) = Joint(1).Euler(1,3,:)-180;
+end
 % Left side corrections
 if contains(Subject.side,'L')
     Joint(1).Euler(1,1,:) = -Joint(1).Euler(1,1,:);
     Joint(1).Euler(1,3,:) = -Joint(1).Euler(1,3,:)+180;
     Joint(1).dj(3,1,:)    = -Joint(1).dj(3,1,:);
+end
+% Quadrant jump corrections
+if max(Joint(1).Euler(1,3,:)) > 120 && max(Joint(1).Euler(1,3,:)) < 300
+    Joint(1).Euler(1,3,:) = Joint(1).Euler(1,3,:) - 120;
+elseif max(Joint(1).Euler(1,3,:)) > 120 && max(Joint(1).Euler(1,3,:)) > 300
+    Joint(1).Euler(1,3,:) = Joint(1).Euler(1,3,:) - 300;
+elseif min(Joint(1).Euler(1,3,:)) < -120 && min(Joint(1).Euler(1,3,:)) > -300
+    Joint(1).Euler(1,3,:) = Joint(1).Euler(1,3,:) + 120;
+elseif min(Joint(1).Euler(1,3,:)) < -120 && min(Joint(1).Euler(1,3,:)) < -300
+    Joint(1).Euler(1,3,:) = Joint(1).Euler(1,3,:) + 300;
 end
 clear Euler dj x y p x1 y1;
 
@@ -96,7 +111,7 @@ Joint(3).legend       = {'Retraction (-) / Protraction (+)','Lateral (-) / Media
                          'Inferior (-) / Superior (+) translation','Anterior (+) / Posterior (-) translation','Medial (-) / Lateral (+) translation'};
 Euler                 = R2mobileYXZ_array3(Joint(3).T(1:3,1:3,:));
 Joint(3).Euler(1,1,:) = rad2deg(Euler(:,1,:)); % Internal-External Rotation or Protraction-Retraction
-Joint(3).Euler(1,2,:) = rad2deg(Euler(:,2,:)); % Medial-Lateral or Downward-Upward Rotation for scapula
+Joint(3).Euler(1,2,:) = -rad2deg(Euler(:,2,:)); % Medial-Lateral or Downward-Upward Rotation for scapula
 Joint(3).Euler(1,3,:) = rad2deg(Euler(:,3,:)); % Flexion-Extension or Posterior-Anterior Tilt
 dj                    = Vnop_array3(Joint(3).T(1:3,4,:),... Di+1 to Pi in SCS of segment i+1
                                     repmat([0;1;0],[1 1 n]),... % Yi+1 in SCS of segment i+1
@@ -106,6 +121,7 @@ Joint(3).dj           = dj*1e3; % Stored in mm
 % Left side corrections
 if contains(Subject.side,'L')
     Joint(3).Euler(1,1,:) = -Joint(3).Euler(1,1,:)+180;
+    Joint(3).Euler(1,3,:) = -Joint(3).Euler(1,3,:);
     Joint(3).dj(2,1,:)    = -Joint(3).dj(2,1,:);
 end
 clear Euler dj;
@@ -125,7 +141,7 @@ Joint(4).legend       = {'Retraction (-) / Protraction (+)','Lateral (-) / Media
                          'Inferior (-) / Superior (+) translation','Anterior (+) / Posterior (-) translation','Medial (-) / Lateral (+) translation'};
 Euler                 = R2mobileYXZ_array3(Joint(4).T(1:3,1:3,:));
 Joint(4).Euler(1,1,:) = rad2deg(Euler(:,1,:)); % Internal-External Rotation or Protraction-Retraction
-Joint(4).Euler(1,2,:) = rad2deg(Euler(:,2,:)); % Medial-Lateral or Downward-Upward Rotation for scapula
+Joint(4).Euler(1,2,:) = -rad2deg(Euler(:,2,:)); % Medial-Lateral or Downward-Upward Rotation for scapula
 Joint(4).Euler(1,3,:) = rad2deg(Euler(:,3,:)); % Flexion-Extension or Posterior-Anterior Tilt
 % Translation of the origin of the scapula related to the origin of
 % the clavicle
@@ -134,14 +150,14 @@ dj                    = Vnop_array3(Joint(4).T(1:3,4,:),... Di+1 to Pi in SCS of
                                     Vnorm_array3(cross(repmat([0;1;0],[1 1 n]),Joint(4).T(1:3,3,:))),... X = YxZ
                                     Joint(4).T(1:3,3,:)); % Zi in SCS of segment i                                     
 Joint(4).dj           = dj*1e3; % Stored in mm
-%     % Example: displacement of the acroclavicular joint point expressed in
-%     % the scapula frame vs. expressed in the clavicle frame
-%     dj                    = Vnop_array3(Bone(2).Trial(itrial).Vlandmark(1).coordinate(:,:,:)-Bone(3).Trial(itrial).Landmark(9).coordinates(:,:,:),...% Joint(4).T(1:3,4,:),... Di+1 to Pi in SCS of segment i+1
-%                                         Bone(3).Trial(itrial).SCS.Y,... %repmat([0;1;0],[1 1 n]),... % Yi+1 in SCS of segment i+1
-%                                         Vnorm_array3(cross(Bone(3).Trial(itrial).SCS.Y,Bone(2).Trial(itrial).SCS.Z)),... %Vnorm_array3(cross(repmat([0;1;0],[1 1 n]),Joint(4).T(1:3,3,:))),... X = YxZ
-%                                         Bone(2).Trial(itrial).SCS.Z); %Joint(4).T(1:3,3,:)); % Zi in SCS of segment i                                     
-%     Joint(4).dj           = dj*1e3; % Stored in mm
-%     clear Euler dj;  
+    % Example: displacement of the acroclavicular joint point expressed in
+    % the scapula frame vs. expressed in the clavicle frame
+    dj                    = Vnop_array3(Bone(2).Trial(itrial).Vlandmark(1).coordinate(:,:,:)-Bone(3).Trial(itrial).Landmark(9).coordinates(:,:,:),...% Joint(4).T(1:3,4,:),... Di+1 to Pi in SCS of segment i+1
+                                        Bone(3).Trial(itrial).SCS.Y,... %repmat([0;1;0],[1 1 n]),... % Yi+1 in SCS of segment i+1
+                                        Vnorm_array3(cross(Bone(3).Trial(itrial).SCS.Y,Bone(2).Trial(itrial).SCS.Z)),... %Vnorm_array3(cross(repmat([0;1;0],[1 1 n]),Joint(4).T(1:3,3,:))),... X = YxZ
+                                        Bone(2).Trial(itrial).SCS.Z); %Joint(4).T(1:3,3,:)); % Zi in SCS of segment i                                     
+    Joint(4).dj2           = dj*1e3; % Stored in mm
+    clear Euler dj;  
 % Left side corrections
 if contains(Subject.side,'L')
     Joint(4).Euler(1,1,:) = -Joint(4).Euler(1,1,:);
@@ -175,7 +191,7 @@ clear Euler dj;
 % Left side corrections
 if contains(Subject.side,'L')
     Joint(5).Euler(1,1,:) = -Joint(5).Euler(1,1,:)-180;
-    Joint(5).Euler(1,2,:) = -Joint(5).Euler(1,2,:);
+    Joint(5).Euler(1,3,:) = -Joint(5).Euler(1,3,:);
     Joint(5).dj(2,1,:)    = -Joint(5).dj(2,1,:);
 end
 
@@ -221,7 +237,7 @@ end
 % STORE KINEMATICS IN CSV FILE
 % -------------------------------------------------------------------------
 if file == 1
-    fileName  = ['../',Subject.id,'_',Subject.side,'_',Trial(itrial).motion,'_kinematics.csv'];
+    fileName  = ['../',Subject.id,'_',Subject.side,'_',conditionList,'_',Trial(itrial).motion,'_kinematics.csv'];
     T         = {x_label, ...
                  [Joint(1).label,' (',Joint(1).sequence,')'] [Joint(1).label,' (',Joint(1).sequence,')'] [Joint(1).label,' (',Joint(1).sequence,')'] [Joint(1).label,' (',Joint(1).sequence,')'] [Joint(1).label,' (',Joint(1).sequence,')'] [Joint(1).label,' (',Joint(1).sequence,')'], ...
                  [Joint(2).label,' (',Joint(2).sequence,')'] [Joint(2).label,' (',Joint(2).sequence,')'] [Joint(2).label,' (',Joint(2).sequence,')'] [Joint(2).label,' (',Joint(2).sequence,')'] [Joint(2).label,' (',Joint(2).sequence,')'] [Joint(2).label,' (',Joint(2).sequence,')'], ...

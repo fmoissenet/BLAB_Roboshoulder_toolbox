@@ -27,16 +27,15 @@ clc;
 % -------------------------------------------------------------------------
 % SET SUBJECT INFO
 % -------------------------------------------------------------------------
-Subject.id   = 'RS001';
-Subject.side = 'L';
+Subject.id   = 'RS003';
+Subject.side = 'R';
 
 % -------------------------------------------------------------------------
 % SET FOLDERS
 % -------------------------------------------------------------------------
-Folder.toolbox      = 'C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Roboshoulder_toolbox\';
-Folder.dependencies = 'C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Roboshoulder_toolbox\dependencies\';
-Folder.data         = ['C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Roboshoulder_dataset\',Subject.id,'_',Subject.side,'\'];
-Folder.export       = [Folder.data,'\Results\'];
+Folder.toolbox      = 'C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Distributed dataset and toolbox\BLAB_Roboshoulder_toolbox\';
+Folder.dependencies = 'C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Distributed dataset and toolbox\BLAB_Roboshoulder_toolbox\dependencies\';
+Folder.data         = ['C:\Users\moissene\OneDrive - unige.ch\2019 - ROBOSHOULDER\Data\Distributed dataset and toolbox\BLAB_Roboshoulder_dataset\',Subject.id,'_',Subject.side,'\'];
 addpath(Folder.toolbox);
 addpath(genpath(Folder.dependencies));
 
@@ -82,7 +81,7 @@ PlotStatic(Bone,showVertices);
 % APPLY MOTION FROM RECORDED DYNAMIC TASK
 % -------------------------------------------------------------------------
 % Initialisation
-step         = 1; % Frame step
+step         = 50; % Frame step
 showVertices = 1; % Compute/show vertices (1) or not (0)
 fig          = 0; % Plot kinematic results (1) or not (0)
 file         = 0; % Generate kinematics result file (1) or not (0)
@@ -112,7 +111,7 @@ for itrial = 1:size(trialList,2)
         % Set segment coordinate systems
         Bone = SetSegmentCoordinateSystems(Bone,'Trial',itrial);
         % Compute kinematics
-        Trial(itrial).Joint = ComputeKinematics(Subject,Bone,Trial,itrial,fig,file);
+        Trial(itrial).Joint = ComputeKinematics(Subject,Bone,Trial,conditionList{itrial},itrial,fig,file);
         % Plot
         PlotDynamic(Bone,Trial,'Trial',itrial,'back',showVertices);
     end
