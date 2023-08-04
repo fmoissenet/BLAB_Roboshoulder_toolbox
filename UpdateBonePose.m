@@ -57,6 +57,8 @@ for t = 1:step:n
         Bone(4).(type)(itrial).Landmark(ilandmark).coordinates(:,:,t2) = R(:,:,t2)*Bone(4).Static.Landmark(ilandmark).coordinates+d(:,:,t2);
     end
     % Objects
+    Bone(4).(type)(itrial).Object(1).patch.faces = Bone(4).Static.Object(1).patch.faces;
+    Bone(4).(type)(itrial).Object(1).patch.vertices(:,:,t2) = R(:,:,t2)*Bone(4).Static.Object(1).patch.vertices+d(:,:,t2);
     % Vertices
     if showVertices == 1
         Bone(4).(type)(itrial).Meshl.vertices(:,:,t2) = R(:,:,t2)*Bone(4).Static.Meshl.vertices+d(:,:,t2);
@@ -78,6 +80,20 @@ for t = 1:step:n
                                                                            (Bone(4).(type)(itrial).Landmark(ilandmark).coordinates(:,:,t2)- ...
                                                                             Bone(4).(type)(itrial).SCS.O(:,:,t2)); % In thorax coordinate system
     end
+    % Objects
+    Bone(4).(type)(itrial).Object(1).label           = Bone(4).Static.Object(1).label;
+    Bone(4).(type)(itrial).Object(1).centre(:,:,t2)   = R(:,:,t2)*Bone(4).Static.Object(1).centre+d(:,:,t2);
+    Bone(4).(type)(itrial).Object(1).centre_t(:,:,t2) = inv([Bone(4).(type)(itrial).SCS.X(:,:,t2) ...
+                                                            Bone(4).(type)(itrial).SCS.Y(:,:,t2) ...
+                                                            Bone(4).(type)(itrial).SCS.Z(:,:,t2)])* ...
+                                                       (Bone(4).(type)(itrial).Object(1).centre(:,:,t2)- ...
+                                                        Bone(4).(type)(itrial).SCS.O(:,:,t2)); % In thorax coordinate system  
+    Bone(4).(type)(itrial).Object(1).patch.vertices_t(:,:,t2) = inv([Bone(4).(type)(itrial).SCS.X(:,:,t2) ...
+                                                            Bone(4).(type)(itrial).SCS.Y(:,:,t2) ...
+                                                            Bone(4).(type)(itrial).SCS.Z(:,:,t2)])* ...
+                                                       (Bone(4).(type)(itrial).Object(1).patch.vertices(:,:,t2)- ...
+                                                        Bone(4).(type)(itrial).SCS.O(:,:,t2)); % In thorax coordinate system  
+    Bone(4).(type)(itrial).Object(1).radii           = Bone(4).Static.Object(1).radii;
     % Vertices (light mesh, only for visualisation)
     if showVertices == 1
         Bone(4).(type)(itrial).Meshl.faces             = Bone(4).Static.Meshl.faces;

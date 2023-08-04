@@ -70,8 +70,7 @@ vertices = [X Y Z]*vertices+O;
 Bone(1).Static.Object(1).label          = 'Humeral head sphere';
 [Bone(1).Static.Object(1).centre, ...
  Bone(1).Static.Object(1).radius]       = lssphere(vertices',mean(vertices')',0.025,0.001,0.001);
-Bone(1).Static.Object(1).centre         = Bone(1).Static.Object(1).centre';
-Bone(1).Static.Object(1).centre         = Bone(1).Static.Object(1).centre';
+Bone(1).Static.Object(1).centre         = Bone(1).Static.Object(1).centre;
 Bone(1).Static.Landmark(12).label       = 'Humeral head centre';
 Bone(1).Static.Landmark(12).coordinates = Bone(1).Static.Object(1).centre;
 clear txtFile temp pointCloud P R V D N X Y Z O vertices subset;
@@ -101,5 +100,96 @@ Bone(2).Static.Object(1).normal = [b(2);b(3);b(1)];
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
-% THORAX
+% THORAX (adapted from https://doi.org/10.1007/s00276-019-02342-4)
 % -------------------------------------------------------------------------
+% Load mesh model related to scapula gliding surface (from rib 2 to 8)
+stlFile     = [Subject.id,'_',Subject.side,'_Thorax_ScapulaGlidingSurface_Light.stl'];
+[v,f,n]     = stlRead(stlFile);
+FV.vertices = v*1e-3; % m
+FV.faces    = f;
+clear c v f;
+% Compute vertex normals
+FV.normals = patchnormals(FV); % Compute mean normal at each vertex
+% Load landmarks defining the scapula gliding surface
+txtFile = [Subject.id,'_',Subject.side,'_Thorax_ScapulaGlidingSurface_Landmarks.fcsv'];
+temp    = csvread(txtFile,3,0);
+points  = temp(1:6,2:4)*1e-3; % m
+% Set plane coordinate system /left (landmarks 1 to 3)
+X = (points(3,:)-points(1,:))/norm((points(3,:)-points(1,:)));
+Y = (points(2,:)-points(1,:))/norm((points(2,:)-points(1,:)));
+Z = cross(X,Y)/norm(cross(X,Y)); % Pointing posteriorly
+X = cross(Y,Z)/norm(cross(Y,Z));
+O = points(1,:);
+% Keep only vertices of the positive side of the plane
+PV.vertices = (FV.vertices-O)*inv([X;Y;Z]);
+PV.normals = (FV.normals)*inv([X;Y;Z]);
+subset = [];
+for i = 1:size(FV.vertices,1)
+    if PV.vertices(i,3) >= 0 && ... % Only posterior vertices
+       PV.normals(i,3) <= 0 && ... % Only posterior oriented normals
+       abs(PV.normals(i,3)) >= 0.25 % Normal orientation offset
+        subset = [subset i];
+    end
+end
+clear X Y Z O PV;
+% Set plane coordinate system /right (landmarks 4 to 6)
+X = -(points(6,:)-points(4,:))/norm((points(6,:)-points(4,:)));
+Y = (points(5,:)-points(4,:))/norm((points(5,:)-points(4,:)));
+Z = cross(X,Y)/norm(cross(X,Y)); % Pointing posteriorly
+X = cross(Y,Z)/norm(cross(Y,Z));
+O = points(4,:);
+% Keep only vertices of the positive side of the plane
+PV.vertices = (FV.vertices-O)*inv([X;Y;Z]);
+PV.normals = (FV.normals)*inv([X;Y;Z]);
+for i = 1:size(PV.vertices,1)
+    if PV.vertices(i,3) >= 0 && ... % Only posterior vertices
+       PV.normals(i,3) <= 0 && ... % Only posterior oriented normals
+       abs(PV.normals(i,3)) >= 0.25 % Normal orientation offset
+        subset = [subset i];
+    end
+end
+clear X Y Z O PV;
+% Store subset vertices and normals
+SV.vertices = FV.vertices(subset,:);
+SV.normals = FV.normals(subset,:);
+% Scapula gliding surface (least-square ellipsoid)
+[c,r,~,v]                               = ellipsoid_fit(SV.vertices);
+x                                       = SV.vertices(:,1);
+y                                       = SV.vertices(:,2);
+z                                       = SV.vertices(:,3);
+mind                                    = [min(x) min(y) min(z)];
+maxd                                    = [max(x) max(y) max(z)];
+nsteps                                  = 100;
+step                                    = (maxd-mind)/nsteps;
+[x y z]                                 = meshgrid(linspace(mind(1)-step(1),maxd(1)+step(1),nsteps), ...
+                                               linspace(mind(2)-step(2),maxd(2)+step(2),nsteps), ...
+                                               linspace(mind(3)-step(3),maxd(3)+step(3),nsteps));
+Ellipsoid                               = v(1)*x.*x+v(2)*y.*y+v(3)*z.*z+ ...
+                                          2*v(4)*x.*y+2*v(5)*x.*z+2*v(6)*y.*z + ...
+                                          2*v(7)*x+2*v(8)*y+2*v(9)*z;
+Bone(4).Static.Object(1).label          = 'Scapula gliding surface (ellipsoid)';
+Bone(4).Static.Object(1).centre         = c;
+Bone(4).Static.Object(1).radii          = r;
+Bone(4).Static.Object(1).patch          = isosurface(x,y,z,Ellipsoid,-v(10));
+Bone(4).Static.Object(1).patch.vertices = Bone(4).Static.Object(1).patch.vertices';
+Bone(4).Static.Object(1).patch.faces    = Bone(4).Static.Object(1).patch.faces';
+% Plot (ONLY FOR TEST)
+% figure();
+% hold on; axis equal; view(0,90);
+% patch_array3(FV.faces',...
+%              FV.vertices',...
+%              [0.7 0.7 0.7],'none','gouraud',1);
+% plot3(points(:,1),...
+%       points(:,2),...
+%       points(:,3),...
+%       'Marker','.','MarkerSize',15,'Color','black');
+% for i = 1:size(SV.vertices,1)
+%     p1 = SV.vertices(i,:);
+%     p2 = SV.vertices(i,:)-0.005*SV.normals(i,:);    
+%     plot3(p1(1),p1(2),p1(3),'LineStyle','none','Marker','.','Color','red');   
+%     plot3([p1(1) p2(1)],[p1(2) p2(2)],[p1(3) p2(3)],'g-');
+% end
+% patch_array3(Bone(4).Static.Object(1).patch.faces,...
+%              Bone(4).Static.Object(1).patch.vertices,...
+%              'blue','none','gouraud',0.3);
+% test;
